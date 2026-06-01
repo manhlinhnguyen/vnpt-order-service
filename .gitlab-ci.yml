@@ -1,0 +1,145 @@
+stages:
+  - test
+  - build
+  - deploy-staging
+  - deploy-prod
+
+variables:
+  JAVA_IMAGE: "eclipse-temurin:21-jdk"
+  DOTNET_IMAGE: "mcr.microsoft.com/dotnet/sdk:8.0"
+  NODE_IMAGE: "node:20-alpine"
+  DOCKER_DRIVER: overlay2
+
+# ----------------------------------------------------------------
+# Backend — Java Spring Boot
+# ----------------------------------------------------------------
+backend:test:
+  stage: test
+  image: $JAVA_IMAGE
+  cache:
+    key: "$CI_COMMIT_REF_SLUG-maven"
+    paths:
+      - backend/.m2/
+  script:
+    - cd backend
+    - ./mvnw test -Dmaven.repo.local=.m2 -q
+  artifacts:
+    when: always
+    reports:
+      junit: backend/target/surefire-reports/TEST-*.xml
+  only:
+    - merge_requests
+    - main
+
+backend:build:
+  stage: build
+  image: $JAVA_IMAGE
+  script:
+    - cd backend
+    - ./mvnw package -DskipTests -q
+  artifacts:
+    paths:
+      - backend/target/*.jar
+    expire_in: 1 week
+  only:
+    - main
+
+# ----------------------------------------------------------------
+# Billing — .NET 8
+# ----------------------------------------------------------------
+billing:test:
+  stage: test
+  image: $DOTNET_IMAGE
+  script:
+    - cd billing
+    - dotnet restore
+    - dotnet test --no-restore
+  only:
+    - merge_requests
+    - main
+
+billing:build:
+  stage: build
+  image: $DOTNET_IMAGE
+  script:
+    - cd billing
+    - dotnet publish -c Release -o publish/
+  artifacts:
+    paths:
+      - billing/publish/
+    expire_in: 1 week
+  only:
+    - main
+
+# ----------------------------------------------------------------
+# Frontend — React
+# ----------------------------------------------------------------
+web:test:
+  stage: test
+  image: $NODE_IMAGE
+  cache:
+    key: "$CI_COMMIT_REF_SLUG-node"
+    paths:
+      - web/node_modules/
+  script:
+    - cd web
+    - npm ci
+    - npm test -- --run
+  only:
+    - merge_requests
+    - main
+
+web:build:
+  stage: build
+  image: $NODE_IMAGE
+  script:
+    - cd web
+    - npm ci
+    - npm run build
+  artifacts:
+    paths:
+      - web/dist/
+    expire_in: 1 week
+  only:
+    - main
+
+# ----------------------------------------------------------------
+# Deploy — Staging (auto on main)
+# ----------------------------------------------------------------
+deploy:staging:
+  stage: deploy-staging
+  image: alpine:latest
+  environment:
+    name: staging
+    url: https://order-staging.vnpt.vn
+  script:
+    # TODO: thay bằng script deploy thật (kubectl apply / docker stack deploy)
+    - echo "Deploying to staging..."
+    - echo "Backend JAR: $(ls backend/target/*.jar)"
+    - echo "Deploy complete"
+  dependencies:
+    - backend:build
+    - billing:build
+    - web:build
+  only:
+    - main
+
+# ----------------------------------------------------------------
+# Deploy — Production (manual approval)
+# ----------------------------------------------------------------
+deploy:prod:
+  stage: deploy-prod
+  image: alpine:latest
+  environment:
+    name: production
+    url: https://order.vnpt.vn
+  when: manual
+  script:
+    - echo "Deploying to production..."
+    - echo "This requires manual approval"
+  dependencies:
+    - backend:build
+    - billing:build
+    - web:build
+  only:
+    - main

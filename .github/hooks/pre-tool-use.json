@@ -1,0 +1,12 @@
+{
+  "hooks": [
+    {
+      "event": "PreToolUse",
+      "matcher": {
+        "toolName": "run_in_terminal"
+      },
+      "command": "node .github/hooks/pre-tool-use-check.js",
+      "description": "Chặn lệnh nguy hiểm: git push --force, rm -rf, DROP TABLE"
+    }
+  ]
+}
