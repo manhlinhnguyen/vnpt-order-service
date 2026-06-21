@@ -114,4 +114,4 @@ vnpt-order-service/
 
 - Repo này là **demo** — code đủ để học Copilot, không phải production.
 - `.github/` đặt trong repo GitLab vẫn hoạt động với GHCP (đọc local, không cần GitHub remote).
-- Xem tài liệu đào tạo đầy đủ: `raw/articles/Hướng Dẫn Thực Hành GitHub Copilot — Từ Cơ Bản Đến Nâng Cao v1.4.md`.
+- Xem tài liệu đào tạo đầy đủ: `Hướng Dẫn Thực Hành GitHub Copilot — Từ Cơ Bản Đến Nâng Cao v1.4.pdf`.
